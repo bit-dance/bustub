@@ -40,19 +40,39 @@ class BPlusTree {
 
  public:
   explicit BPlusTree(std::string name, BufferPoolManager *buffer_pool_manager, const KeyComparator &comparator,
-                     int leaf_max_size = LEAF_PAGE_SIZE, int internal_max_size = INTERNAL_PAGE_SIZE);
+                     int leaf_max_size = LEAF_PAGE_SIZE, int internal_max_size = INTERNAL_PAGE_SIZE,page_id_t root_page_id = INVALID_PAGE_ID);
 
   // Returns true if this B+ tree has no keys and values.
   auto IsEmpty() const -> bool;
 
   // Insert a key-value pair into this B+ tree.
   auto Insert(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
+  auto StartNewTree(const KeyType &key, const ValueType &value);
+  auto InsertIntoLeaf(const KeyType &key, const ValueType &value, Transaction *transaction = nullptr) -> bool;
+  template <typename N>  N *Split(N *node);
+  void InsertIntoParent(BPlusTreePage *old_node, const KeyType &key, BPlusTreePage *new_node,
+                                      Transaction *transaction= nullptr);
+
 
   // Remove a key and its value from this B+ tree.
   void Remove(const KeyType &key, Transaction *transaction = nullptr);
+  template <typename N> bool CoalesceOrRedistribute(N *node, Transaction *transaction= nullptr);
+  template<typename N> bool FindSibling(N *node1,N * &node2);
+  template<typename N> bool Coalesce(N *&neighbor_node, N *&node,
+                              BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *&parent, int index,
+                              Transaction *transaction= nullptr);
+  template <typename N> void Redistribute(N *neighbor_node, N *node, int index);
+  bool AdjustRoot(BPlusTreePage *old_root_node);
 
   // return the value associated with a given key
   auto GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *transaction = nullptr) -> bool;
+  auto FindLeafPage(const KeyType& key,bool leftMost=false) -> B_PLUS_TREE_LEAF_PAGE_TYPE *;
+  BPlusTreePage * FetchPage(page_id_t page_id);
+
+
+  bool Check(bool forceCheck= false);
+  bool openCheck = true;
+
 
   // return the page id of the root node
   auto GetRootPageId() -> page_id_t;
